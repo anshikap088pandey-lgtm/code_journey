@@ -1,1 +1,62 @@
+const express = require("express");
+const app = express();
 
+app.use(express.json());
+app.use(express.static(".")); // frontend serve karega
+
+app.post("/analyze", (req, res) => {
+let { skills, goal } = req.body;
+
+let result = "=== AI Career Coach Analysis ===\n\n";
+
+// Skill gap
+if (!skills.toLowerCase().includes("dsa")) {
+result += "❌ Weak Area: DSA\n👉 Action: Solve 5 problems daily for 7 days\n\n";
+}
+
+// Goal based suggestion
+if (goal.toLowerCase().includes("developer")) {
+result += "🎯 Goal: Software Developer\n👉 Apply to companies like TCS, Infosys, Wipro\n\n";
+}
+
+// Strong candidate detection
+if (skills.toLowerCase().includes("python")) {
+result += "🔥 Strong Profile Detected\n👉 Try higher companies / startups\n\n";
+}
+
+// Mentor matching
+if (!skills.toLowerCase().includes("project")) {
+result += "🧑‍🏫 Mentor Assigned: Beginner Mentor\n\n";
+} else {
+result += "🧑‍🏫 Mentor Assigned: Advanced Mentor\n\n";
+}
+
+// Alert system
+result += "⚠ Alert: Apply to at least 3 companies this week\n\n";
+
+// Daily task
+result += "📅 Daily Task: Practice coding for 2 hours\n";
+
+res.json({ result });
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));<!DOCTYPE html>
+
+<html> <head> <title>AI Career Coach</title> </head> <body> <h1>🤖 AI Career Coach</h1> <textarea id="skills" placeholder="Enter your skills"></textarea><br><br>
+<input id="goal" placeholder="Enter your goal"><br><br>
+
+<button onclick="analyze()">Get Guidance</button>
+
+<pre id="output"></pre> <script src="script.js"></script> </body> </html>async function analyze() { let skills = document.getElementById("skills").value; let goal = document.getElementById("goal").value;
+let res = await fetch("/analyze", {
+method: "POST",
+headers: {
+"Content-Type": "application/json"
+},
+body: JSON.stringify({ skills, goal })
+});
+
+let data = await res.json();
+document.getElementById("output").innerText = data.result;
+}Skills: HTML, CSS, Python
+Goal: Software Developer
