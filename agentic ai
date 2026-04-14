@@ -1,0 +1,211 @@
+def assess_readiness(profile):
+    """Return a readiness score and feedback."""
+    score = 0
+    if profile["skill_level"] == "advanced": score += 40
+    elif profile["skill_level"] == "intermediate": score += 20
+    if profile["placement_ready"]: score += 30
+    if len(profile["weak_areas"]) == 0: score += 30
+    return f"Readiness score: {score}/100. Focus on: {', '.join(profile['weak_areas'])}"
+def generate_roadmap(profile):
+    """Return a week-by-week study plan."""
+    level = profile["skill_level"]
+    domain = profile["domain"]
+    weak = profile["weak_areas"]
+    
+    roadmap = f"# {level.title()} {domain} Roadmap for {profile['name']}\n"
+    if level == "beginner":
+        roadmap += "Week 1-2: Fundamentals of " + domain + "\n"
+        roadmap += "Week 3-4: Build a mini project\n"
+    elif level == "intermediate":
+        roadmap += "Week 1: Strengthen weak areas: " + ", ".join(weak) + "\n"
+        roadmap += "Week 2-3: Advanced topics + portfolio project\n"
+    else:  # advanced
+        roadmap += "Week 1: System design & optimization\n"
+        roadmap += "Week 2-3: Mock interviews + competitive programming\n"
+    roadmap += "Week 4: Apply to 10 companies/day\n"
+    return roadmap
+    def recommend_resources(topic):
+    """Simulate fetching YouTube/Article links."""
+    resources = {
+        "algorithms": "https://www.youtube.com/watch?v=HtSuA80QTyo (Algorithms course)",
+        "SQL": "https://www.w3schools.com/sql/ (SQL tutorial)",
+        "web development": "https://www.theodinproject.com/ (Full stack curriculum)"
+    }
+    return resources.get(topic.lower(), f"Check Coursera/Udemy for {topic}")
+    def ask_quiz_question(domain):
+    """Return a simple question to test knowledge."""
+    questions = {
+        "web development": "What does CSS stand for?",
+        "data science": "What is a p-value?",
+        "AI/ML": "What is overfitting?"
+    }
+    return questions.get(domain, "Explain one key concept in your domain.")
+    SYSTEM_PROMPT = """You are a Career Coach AI for students. Your goal is to personalize guidance based on the student's profile.
+
+You have these tools:
+- assess_readiness(profile) → gives readiness score and weak areas.
+- generate_roadmap(profile) → returns a weekly study plan.
+- recommend_resources(topic) → finds learning materials for a specific topic.
+- ask_quiz_question(domain) → gives a quiz question; student will answer later.
+
+Rules:
+1. Always consider the student's profile (skill_level, domain, weak_areas, goal).
+2. First, assess readiness. Then suggest a roadmap or resources.
+3. To use a tool, output EXACTLY:
+   Action: tool_name
+   Action Input: the input (for assess_readiness and generate_roadmap, input is the full profile dict as a string)
+4. After the tool returns an Observation, you can ask follow‑up questions or provide the final answer.
+5. When you are done helping, output:
+   Final Answer: [your summary / next steps]
+
+Be encouraging and practical. Ask clarifying questions if needed.
+
+Student profile: {profile}
+"""
+import os
+import json
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# ---------- Student Profile (global) ----------
+profile = {
+    "name": "Riya",
+    "skill_level": "beginner",
+    "domain": "web development",
+    "placement_ready": False,
+    "weak_areas": ["algorithms", "SQL"],
+    "strong_areas": ["HTML/CSS"],
+    "goal": "get a frontend internship in 3 months"
+}
+
+# ---------- Tools ----------
+def assess_readiness():
+    score = 0
+    if profile["skill_level"] == "advanced": score += 40
+    elif profile["skill_level"] == "intermediate": score += 20
+    if profile["placement_ready"]: score += 30
+    if len(profile["weak_areas"]) == 0: score += 30
+    return f"Readiness score: {score}/100. Weak areas: {', '.join(profile['weak_areas'])}"
+
+def generate_roadmap():
+    level = profile["skill_level"]
+    domain = profile["domain"]
+    weak = profile["weak_areas"]
+    roadmap = f"# {level.title()} {domain} Roadmap for {profile['name']}\n"
+    if level == "beginner":
+        roadmap += "Week 1-2: HTML/CSS + JavaScript basics\nWeek 3-4: Build a personal portfolio site\n"
+    elif level == "intermediate":
+        roadmap += f"Week 1: Master weak areas: {', '.join(weak)}\nWeek 2-3: React + backend basics\nWeek 4: Two portfolio projects\n"
+    else:
+        roadmap += "Week 1: System design & performance\nWeek 2: Advanced frameworks (Next.js)\nWeek 3-4: Mock interviews + open source contributions\n"
+    roadmap += "\nDaily: 1 LeetCode easy problem.\n"
+    return roadmap
+
+def recommend_resources(topic):
+    resources = {
+        "algorithms": "https://www.youtube.com/watch?v=HtSuA80QTyo",
+        "sql": "https://www.w3schools.com/sql/",
+        "web development": "https://www.theodinproject.com/",
+        "html": "https://developer.mozilla.org/en-US/docs/Web/HTML",
+        "css": "https://css-tricks.com/"
+    }
+    return resources.get(topic.lower(), f"Search for '{topic}' on freeCodeCamp or YouTube.")
+
+def ask_quiz_question():
+    domain = profile["domain"]
+    questions = {
+        "web development": "What is the difference between 'let' and 'var' in JavaScript?",
+        "data science": "Explain the bias‑variance tradeoff.",
+        "AI/ML": "What is gradient descent?"
+    }
+    return questions.get(domain, "What is your biggest learning challenge right now?")
+
+TOOLS = {
+    "assess_readiness": assess_readiness,
+    "generate_roadmap": generate_roadmap,
+    "recommend_resources": recommend_resources,
+    "ask_quiz_question": ask_quiz_question,
+}
+
+# ---------- LLM Call (same as before) ----------
+def call_llm(messages):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.3,
+    )
+    return response.choices[0].message.content
+
+# ---------- Agent Loop ----------
+def career_coach_agent(user_input):
+    # Build initial messages with system prompt (inject profile)
+    system_prompt_with_profile = SYSTEM_PROMPT.format(profile=json.dumps(profile, indent=2))
+    messages = [
+        {"role": "system", "content": system_prompt_with_profile},
+        {"role": "user", "content": user_input}
+    ]
+    
+    max_steps = 6
+    step = 0
+    while step < max_steps:
+        print(f"\n--- Step {step+1} ---")
+        llm_output = call_llm(messages)
+        print("Coach says:\n", llm_output)
+        
+        if "Final Answer:" in llm_output:
+            final = llm_output.split("Final Answer:")[-1].strip()
+            print("\n✅ Coach's final advice:\n", final)
+            return final
+        
+        if "Action:" in llm_output and "Action Input:" in llm_output:
+            # Parse action
+            try:
+                action_line = [l for l in llm_output.split("\n") if "Action:" in l][0]
+                action_input_line = [l for l in llm_output.split("\n") if "Action Input:" in l][0]
+                tool_name = action_line.split("Action:")[-1].strip()
+                tool_input = action_input_line.split("Action Input:")[-1].strip()
+                
+                print(f"\n🔧 Using tool: {tool_name}({tool_input})")
+                if tool_name in TOOLS:
+                    # If the tool expects no argument (like assess_readiness), ignore tool_input
+                    if tool_name in ["assess_readiness", "generate_roadmap", "ask_quiz_question"]:
+                        result = TOOLS[tool_name]()
+                    else:
+                        result = TOOLS[tool_name](tool_input)
+                else:
+                    result = f"Tool '{tool_name}' not found."
+                print(f"📦 Observation: {result}")
+                
+                messages.append({"role": "assistant", "content": llm_output})
+                messages.append({"role": "user", "content": f"Observation: {result}"})
+            except Exception as e:
+                print(f"⚠️ Parsing error: {e}")
+                messages.append({"role": "user", "content": "Please use exactly 'Action: tool_name\\nAction Input: input'."})
+        else:
+            print("No action/final answer. Asking coach to reformat.")
+            messages.append({"role": "user", "content": "Please output a tool action or a Final Answer."})
+        
+        step += 1
+    
+    print("Max steps reached.")
+    return None
+
+# ---------- Run ----------
+if __name__ == "__main__":
+    # Example: student asks for help
+    first_question = "I'm a beginner in web development. Can you create a roadmap for me and tell me what to focus on first?"
+    career_coach_agent(first_question)
+    # streamlit_app.py (optional)
+import streamlit as st
+from career_coach import career_coach_agent
+
+st.title("🎓 AI Career Coach for Students")
+user_input = st.text_area("Ask for career advice:")
+if st.button("Get Coach's Reply"):
+    with st.spinner("Thinking..."):
+        response = career_coach_agent(user_input)
+    st.markdown(response)
+    
